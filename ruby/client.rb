@@ -9,3 +9,4 @@ opts = { username: user, host: host_ip, port: port, game_url: 'ws?' }
 
 player = Player.new
 CodenjoyConnection.play(player, opts)
+
