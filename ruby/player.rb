@@ -6,7 +6,9 @@ class Player
 
   # initialize your player
   def initialize
+    # @x_glass -- straight (vertical standing) glass
     @x_glass = Array.new(MAX_Y) { '' }
+    # @y_glass -- transposed (horizontal) glass
     @y_glass = Array.new(MAX_X) { ' ' * MAX_Y }
   end
 
@@ -20,7 +22,7 @@ class Player
     MAX_Y.times { |y| @x_glass[y] = glass[y * MAX_X, MAX_X] }
     MAX_X.times { |x| MAX_Y.times { |y| @y_glass[x][y] = @x_glass[y][x] } }
     MAX_Y.times { |y| p @x_glass[MAX_Y - 1 - y] }
-    MAX_X.times { |x| p @y_glass[x] }
+    #MAX_X.times { |x| p @y_glass[x] }
   end
 
   # This method should return string like left=0, right=0, rotate=0, drop'
@@ -38,111 +40,128 @@ class Player
 
   private
 
-  def step_o
-    # str -- return command string
-    str = ''
-    # y -- minimum y position
+  #
+  # Find lowest level for block with given width
+  #
+  def find_lowest(width)
     y = MAX_Y - 1
-    # x -- x position for minimum y
     x = 0
-
-    # find minimum level for element with width = 2 blocks
-    (MAX_X - 1).times do |x_pos|
-      y_pos = @y_glass[x_pos].reverse.index('*')
-      y1 = y_pos ? MAX_Y - y_pos : 0
-      y_pos = @y_glass[x_pos + 1].reverse.index('*')
-      y2 = y_pos ? MAX_Y - y_pos : 0
-      max_of_min = y1 > y2 ? y1 : y2
-      if max_of_min < y
-        y = max_of_min
-        x = x_pos
+    # process every column and find first free cell
+    y_cur = @y_glass.map do |column|
+      i = column.reverse.index('*')
+      i ? MAX_Y - i : 0
+    end
+    # find continuous line with 'width' number of free cells
+    (MAX_X - width + 1).times do |x_cur|
+      if y_cur[x_cur..x_cur + width - 1].uniq.size == 1 && y_cur[x_cur] < y
+        y = y_cur[x_cur]
+        x = x_cur
       end
     end
-
-    # forming command string
-    if x < @x
-      str << "left=#{@x - x}, "
-    elsif x > @x
-      str << "right=#{x - @x}, "
-    end
-    str << 'drop'
-    puts "O: y=#{y}, x=#{x}, str=\"#{str}\""
-    str
+    [x, y]
   end
 
-  def step_i
-    # str -- return command string
+  #
+  # Forming result string
+  #
+  def result_string(x, rotate = 0)
     str = ''
-    # y_vert -- minimum y position in vertical mode
-    y_vert = MAX_Y - 1
-    # x_vert -- x position for minimum y
-    x_vert = 0
-
-    # find minimum level for element with width = 1 block
-    MAX_X.times do |x_pos|
-      y_pos = @y_glass[x_pos].reverse.index('*')
-      y1 = y_pos ? MAX_Y - y_pos : 0
-      if y1 < y_vert
-        y_vert = y1
-        x_vert = x_pos
-      end
-    end
-
-    # y_horiz -- minimum y position in horizontal mode
-    y_horiz = MAX_Y - 1
-    # x_horiz -- x position for minimum y
-    x_horiz = 0
-
-    # find minimum level for element with width = 4 block
-    (MAX_X - 3).times do |x_pos|
-      y_pos = Array.new(4)
-      4.times do |i|
-        y_i = @y_glass[x_pos + i].reverse.index('*')
-        y_pos[i] = y_i ? MAX_Y - y_i : 0
-      end
-      max_of_min, x_min = y_pos.each_with_index.max
-      if max_of_min < y_horiz
-        y_horiz = max_of_min
-        x_horiz = x_min
-      end
-    end
-
-    # forming command string
-    if y_vert < y_horiz
-      y = y_vert
-      x = x_vert
-    else
-      y = y_horiz
-      x = x_horiz
-    end
     if x < @x
       str << "left=#{@x - x}, "
     elsif x > @x
       str << "right=#{x - @x}, "
     end
-    str << 'rotate=1, ' if y_vert >= y_horiz
+    str << "rotate=#{rotate}, " if rotate > 0
     str << 'drop'
-    puts "I: y=#{y} x=#{x}, str=\"#{str}\""
-    str
   end
 
+  # Process O block
+  #
+  #   **
+  #   **
+  #
+  def step_o
+    x, y = find_lowest(2)
+    result_string(x)
+  end
+
+  # Process I block
+  #
+  #   *
+  #   *
+  #   *
+  #   *
+  #
+  def step_i
+
+    # Process vertical I block
+    x_vert, y_vert = find_lowest(1)
+
+    # Process horizontal I block
+    x_horiz, y_horiz = find_lowest(4)
+
+    if y_vert < y_horiz
+      result_string(x_vert)
+    else
+      result_string(x_horiz + 2, 1)
+    end
+  end
+
+  # Process L block
+  #
+  #   *
+  #   *
+  #   **
+  #
   def step_l
-    'drop'
+    #'drop'
   end
 
+  # Process J block
+  #
+  #     *
+  #     *
+  #    **
+  #
   def step_j
-    'drop'
+
+    # Process rotate = 0
+    x_1, y_1 = find_lowest(2)
+
+    # Process rotate = 1
+    x_2, y_2 = find_lowest(3)
+
+    if y_1 < y_2
+      result_string(x_1 + 1)
+    else
+      result_string(x_2 + 1, 1)
+    end
   end
 
+  # Process S block
+  #
+  #    **
+  #   **
+  #
   def step_s
-    'drop'
+    'rotate=1'
   end
 
+  # Process Z block
+  #
+  #    **
+  #     **
+  #
   def step_z
-    'drop'
+    'rotate=1'
   end
 
+  # Process T block
+  #
+  #    *
+  #   ***
+  #
   def step_t
-    'drop'
+    'rotate=1'
   end
 end
