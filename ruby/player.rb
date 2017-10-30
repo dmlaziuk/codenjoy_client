@@ -58,6 +58,21 @@ class Player
         x = x_cur
       end
     end
+    # find not continuous line with 'width' number of free cells
+    (MAX_X - width + 1).times do |x_cur|
+      y_max = y_cur[x_cur..x_cur + width - 1].max
+      if y_max < y - 2
+        y = y_max
+        x = x_cur
+      end
+    end
+
+    # @x_glass.each_with_index do |row, y|
+    #   (MAX_X)
+    #   i = row.index(' ' * width)
+    #   next if i.nil?
+    #   next if @y_glass[i][y...MAX_Y].index('*')
+    # end
     [x, y]
   end
 
@@ -114,7 +129,18 @@ class Player
   #   **
   #
   def step_l
-    #'drop'
+
+    # Process rotate = 0
+    x_1, y_1 = find_lowest(2)
+
+    # Process rotate = 3
+    x_2, y_2 = find_lowest(3)
+
+    if y_1 < y_2
+      result_string(x_1)
+    else
+      result_string(x_2 + 1, 3)
+    end
   end
 
   # Process J block
@@ -144,7 +170,8 @@ class Player
   #   **
   #
   def step_s
-    'rotate=1'
+    x, y = find_lowest(2)
+    result_string(x + 1)
   end
 
   # Process Z block
@@ -153,7 +180,8 @@ class Player
   #     **
   #
   def step_z
-    'rotate=1'
+    x, y = find_lowest(2)
+    result_string(x)
   end
 
   # Process T block
@@ -162,6 +190,7 @@ class Player
   #   ***
   #
   def step_t
-    'rotate=1'
+    x, y = find_lowest(3)
+    result_string(x + 1)
   end
 end
