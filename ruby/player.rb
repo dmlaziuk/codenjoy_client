@@ -4,12 +4,21 @@ class Player
   MAX_Y = 20
   SIZE = MAX_X * MAX_Y
 
-  # initialize your player
+  # initialize player
   def initialize
     # @x_glass -- straight (vertical standing) glass
     @x_glass = Array.new(MAX_Y) { '' }
     # @y_glass -- transposed (horizontal) glass
     @y_glass = Array.new(MAX_X) { ' ' * MAX_Y }
+    @glass = Hash.new([0, 0])
+    -1.upto(MAX_X) do |x|
+      @glass[[-1, x]] = :bottom
+      @glass[[MAX_Y, x]] = :wall
+    end
+    -1.upto(MAX_Y) do |y|
+      @glass[[y, -1]] = :wall
+      @glass[[y, MAX_X]] = :wall
+    end
   end
 
   # process data for each event from tetris-server
@@ -18,14 +27,23 @@ class Player
     @x = data[/x=\d+/][2, 2].to_i
     @y = data[/y=\d+/][2, 2].to_i
     @next = data[/next=\w{4}/][5, 4]
-    glass = data[/glass=.{#{SIZE}}/][6, 6 + SIZE]
-    MAX_Y.times { |y| @x_glass[y] = glass[y * MAX_X, MAX_X] }
-    MAX_X.times { |x| MAX_Y.times { |y| @y_glass[x][y] = @x_glass[y][x] } }
+    glass_str = data[/glass=.{#{SIZE}}/][6, 6 + SIZE]
+    MAX_Y.times { |y| @x_glass[y] = glass_str[y * MAX_X, MAX_X] }
+    MAX_X.times do |x|
+      MAX_Y.times do |y|
+        cell = @x_glass[y][x]
+        @y_glass[x][y] = cell
+        case cell
+        when ' ' then @glass[[y, x]] = :space
+        when '*' then @glass[[y, x]] = :block
+        end
+      end
+    end
     MAX_Y.times { |y| p @x_glass[MAX_Y - 1 - y] }
     #MAX_X.times { |x| p @y_glass[x] }
   end
 
-  # This method should return string like left=0, right=0, rotate=0, drop'
+  # This method returns string like left=0, right=0, rotate=0, drop'
   def make_step
     case @figure
     when :O then step_o
@@ -66,13 +84,6 @@ class Player
         x = x_cur
       end
     end
-
-    # @x_glass.each_with_index do |row, y|
-    #   (MAX_X)
-    #   i = row.index(' ' * width)
-    #   next if i.nil?
-    #   next if @y_glass[i][y...MAX_Y].index('*')
-    # end
     [x, y]
   end
 
@@ -96,8 +107,9 @@ class Player
   #   **
   #
   def step_o
-    x, y = find_lowest(2)
-    result_string(x)
+    # x, y = find_lowest(2)
+    # result_string(x)
+    result_string(score_o)
   end
 
   # Process I block
@@ -193,4 +205,47 @@ class Player
     x, y = find_lowest(3)
     result_string(x + 1)
   end
+
+  def drop_score
+    case @figure
+      when :O then score_o
+      when :I then score_i
+      when :L then score_l
+      when :J then score_j
+      when :S then score_s
+      when :Z then score_z
+      when :T then score_t
+    end
+  end
+
+  def score(cell)
+    case cell
+    when :wall then 1
+    when :block then 2
+    when :bottom then 2
+    else 0
+    end
+  end
+
+  def score_o
+    scr = [0] * (MAX_X - 1)
+    y_cur = @y_glass.map do |column|
+      i = column.reverse.index('*')
+      i ? MAX_Y - i : 0
+    end
+
+    (MAX_X - 1).times do |x|
+      y = y_cur[x..x + 1].max
+      scr[x] += score(@glass[[y + 1, x - 1]])
+      scr[x] += score(@glass[[y, x - 1]])
+      scr[x] += score(@glass[[y - 1, x - 1]])
+      scr[x] += score(@glass[[y - 1, x]])
+      scr[x] += score(@glass[[y - 1, x + 1]])
+      scr[x] += score(@glass[[y - 1, x + 2]])
+      scr[x] += score(@glass[[y, x + 2]])
+      scr[x] += score(@glass[[y + 1, x + 2]])
+    end
+    scr.each_with_index.max[1]
+  end
+
 end
